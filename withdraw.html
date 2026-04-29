@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdraw - Earning Platform</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh; color: white; padding: 20px; padding-bottom: 50px;
+        }
+        .header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; margin-top: 10px; }
+        .back-btn { position: absolute; left: 0; font-size: 22px; cursor: pointer; color: white; transition: 0.3s; }
+        .back-btn:hover { color: #00d2ff; }
+        .header h2 { font-size: 22px; color: #00ff88; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+
+        /* Lock Screen Overlay */
+        #lockOverlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 32, 39, 0.95); backdrop-filter: blur(8px); z-index: 100;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+        #lockOverlay i { font-size: 60px; color: #ff4d4d; margin-bottom: 15px; animation: shake 2s infinite; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        #lockOverlay h3 { color: white; margin-bottom: 10px; }
+        #lockOverlay p { color: #ccc; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+        .go-btn { background: #00d2ff; color: #0f2027; padding: 12px 25px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; width: 200px; }
+
+        /* Main Content */
+        .container { max-width: 450px; margin: 0 auto; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Balance Card */
+        .balance-card {
+            background: linear-gradient(to right, rgba(0, 210, 255, 0.2), rgba(58, 123, 213, 0.2));
+            border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 15px; padding: 20px; text-align: center; margin-bottom: 20px;
+        }
+        .balance-card p { font-size: 14px; color: #ddd; margin-bottom: 5px; }
+        .balance-card h1 { font-size: 35px; color: #00d2ff; }
+
+        /* Payment Methods */
+        .section-title { font-size: 14px; color: #ccc; margin-bottom: 10px; margin-top: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .methods-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        
+        .method-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; padding: 15px 5px; text-align: center; cursor: pointer; transition: 0.3s;
+        }
+        .method-card img { width: 40px; height: 40px; object-fit: contain; margin-bottom: 5px; }
+        .method-card span { display: block; font-size: 12px; font-weight: bold; color: #ddd; }
+        
+        /* Selected Method State */
+        .method-card.selected { background: rgba(0, 255, 136, 0.1); border-color: #00ff88; box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); transform: scale(1.05); }
+        .method-card.selected span { color: #00ff88; }
+
+        /* Input Form */
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; color: #ddd; margin-bottom: 5px; }
+        .input-group input {
+            width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.2); color: white; outline: none; font-size: 16px; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: #00ff88; background: rgba(0,0,0,0.4); }
+
+        .btn-withdraw {
+            width: 100%; background: linear-gradient(to right, #00ff88, #00b35c); color: #0f2027;
+            border: none; padding: 15px; border-radius: 25px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+        .btn-withdraw:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 255, 136, 0.6); }
+
+        .notice { text-align: center; font-size: 11px; color: #ff9900; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <i class="fas fa-arrow-left back-btn" onclick="location.href='home.html'"></i>
+    <h2>Withdraw Funds</h2>
+</div>
+
+<!-- Lock Screen for Unqualified Users -->
+<div id="lockOverlay">
+    <i class="fas fa-lock"></i>
+    <h3>Access Denied!</h3>
+    <p id="lockMessage">Loading conditions...</p>
+    <button class="go-btn" id="lockBtn" onclick="location.href='home.html'">Go Back</button>
+</div>
+
+<div class="container" id="mainContent" style="display: none;">
+    <!-- Balance -->
+    <div class="balance-card">
+        <p>Available Balance</p>
+        <h1 id="userBalance">0 ৳</h1>
+    </div>
+
+    <!-- BD Methods -->
+    <div class="section-title">Bangladesh Payment Methods</div>
+    <div class="methods-grid">
+        <div class="method-card" onclick="selectMethod('bKash', this)">
+            <i class="fas fa-mobile-alt" style="font-size: 30px; color:#e2136e; margin-bottom: 5px;"></i>
+            <span>bKash</span>
+        </div>
+        <div class="method-card" onclick="selectMethod('Nagad', this)">
+            <i class="fas fa-mobile-alt" style="font-size: 30px; color:#ed1c24; margin-bottom: 5px;"></i>
+            <span>Nagad</span>
+        </div>
+        <div class="method-card" onclick="selectMethod('Rocket', this)">
+            <i class="fas fa-mobile-alt" style="font-size: 30px; color:#8c1596; margin-bottom: 5px;"></i>
+            <span>Rocket</span>
+        </div>
+    </div>
+
+    <!-- Indian Methods -->
+    <div class="section-title">India Payment Methods</div>
+    <div class="methods-grid">
+        <div class="method-card" onclick="selectMethod('UPI', this)">
+            <i class="fas fa-qrcode" style="font-size: 30px; color:#ff9900; margin-bottom: 5px;"></i>
+            <span>UPI</span>
+        </div>
+        <div class="method-card" onclick="selectMethod('Paytm', this)">
+            <i class="fas fa-wallet" style="font-size: 30px; color:#00baf2; margin-bottom: 5px;"></i>
+            <span>Paytm</span>
+        </div>
+        <div class="method-card" onclick="selectMethod('GPay', this)">
+            <i class="fab fa-google-pay" style="font-size: 30px; color:#ffffff; margin-bottom: 5px;"></i>
+            <span>GPay</span>
+        </div>
+    </div>
+
+    <!-- Input Form -->
+    <div class="input-group">
+        <label>Selected Method</label>
+        <input type="text" id="selectedMethodDisplay" readonly placeholder="Choose a method from above" style="color: #00ff88; font-weight: bold;">
+    </div>
+    
+    <div class="input-group">
+        <label>Account Number / UPI ID</label>
+        <input type="text" id="accountNumber" placeholder="Enter receive number or ID">
+    </div>
+
+    <div class="input-group">
+        <label>Amount to Withdraw (৳)</label>
+        <input type="number" id="withdrawAmount" placeholder="Enter amount (No minimum limit)">
+    </div>
+
+    <button class="btn-withdraw" onclick="submitWithdraw()"><i class="fas fa-paper-plane"></i> Send Request</button>
+    <p class="notice"><i class="fas fa-info-circle"></i> No minimum withdraw limit. Admin will process it soon.</p>
+</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const loggedInUser = sessionStorage.getItem("loggedInUser");
+    if(!loggedInUser) window.location.href = "index.html";
+
+    let currentBalance = 0;
+    let selectedMethod = "";
+    let userName = "";
+
+    // Security Check: Verify User Data Real-time
+    db.ref("users/" + loggedInUser).on("value", snapshot => {
+        if(snapshot.exists()) {
+            let u = snapshot.val();
+            currentBalance = u.balance || 0;
+            userName = u.name;
+
+            document.getElementById("userBalance").innerText = currentBalance + " ৳";
+
+            // Conditions: Must be active AND completed at least 1 salary level
+            let isSalaryCompleted = (u.completed_salary_levels && u.completed_salary_levels.length > 0);
+            
+            if(u.status !== "active") {
+                showLock("You must complete 3 tasks to activate your account before withdrawing.", "task.html", "Go to Tasks");
+            } 
+            else if (!isSalaryCompleted) {
+                showLock("You must complete at least 1 Salary Mission to unlock withdrawal.", "selery.html", "Go to Salary");
+            } 
+            else {
+                // All good, show main content
+                document.getElementById("lockOverlay").style.display = "none";
+                document.getElementById("mainContent").style.display = "block";
+            }
+        }
+    });
+
+    function showLock(message, url, btnText) {
+        document.getElementById("lockOverlay").style.display = "flex";
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("lockMessage").innerText = message;
+        
+        let btn = document.getElementById("lockBtn");
+        btn.innerText = btnText;
+        btn.onclick = () => location.href = url;
+    }
+
+    function selectMethod(methodName, element) {
+        // Remove 'selected' class from all methods
+        let cards = document.querySelectorAll('.method-card');
+        cards.forEach(card => card.classList.remove('selected'));
+        
+        // Add 'selected' class to clicked method
+        element.classList.add('selected');
+        
+        selectedMethod = methodName;
+        document.getElementById("selectedMethodDisplay").value = methodName;
+    }
+
+    function submitWithdraw() {
+        let accNum = document.getElementById("accountNumber").value;
+        let amount = parseFloat(document.getElementById("withdrawAmount").value);
+
+        if(!selectedMethod) return alert("Please select a payment method!");
+        if(!accNum) return alert("Please enter your account number/UPI ID!");
+        if(!amount || amount <= 0) return alert("Please enter a valid amount!");
+        if(amount > currentBalance) return alert("Insufficient balance!");
+
+        // Process Withdraw
+        let requestData = {
+            user_number: loggedInUser,
+            user_name: userName,
+            method: selectedMethod,
+            account_number: accNum,
+            amount: amount,
+            status: "pending",
+            time: new Date().toLocaleString(),
+            timestamp: Date.now()
+        };
+
+        // Push to admin's withdraw list
+        db.ref("withdraw_requests").push(requestData).then(() => {
+            // Deduct balance from user profile
+            db.ref("users/" + loggedInUser).update({
+                balance: currentBalance - amount
+            }).then(() => {
+                alert(`Successfully requested withdraw of ${amount} ৳ via ${selectedMethod}. Please wait for admin approval.`);
+                // Reset Fields
+                document.getElementById("accountNumber").value = "";
+                document.getElementById("withdrawAmount").value = "";
+                document.getElementById("selectedMethodDisplay").value = "";
+                selectedMethod = "";
+                document.querySelectorAll('.method-card').forEach(card => card.classList.remove('selected'));
+            });
+        }).catch(err => alert("Error processing request: " + err.message));
+    }
+</script>
+</body>
+</html>
