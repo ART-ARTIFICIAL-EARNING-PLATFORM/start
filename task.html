@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Earning Platform</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh; color: white; padding: 20px; padding-bottom: 50px;
+        }
+        .header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 15px; margin-top: 10px; }
+        .back-btn { position: absolute; left: 0; font-size: 22px; cursor: pointer; color: white; transition: 0.3s; }
+        .back-btn:hover { color: #00d2ff; }
+        .header h2 { font-size: 22px; color: #00d2ff; }
+
+        /* Top Notice */
+        .notice-board {
+            background: rgba(0, 210, 255, 0.1); border-left: 4px solid #00d2ff;
+            padding: 10px 15px; border-radius: 8px; font-size: 12px; margin-bottom: 20px;
+            color: #e0f7fa; line-height: 1.5; font-weight: bold;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center;
+        }
+        .acc-status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        .status-active { background: rgba(0, 255, 100, 0.2); color: #00ff88; border: 1px solid #00ff88; }
+        .status-unactive { background: rgba(255, 0, 50, 0.2); color: #ff4d4d; border: 1px solid #ff4d4d; }
+        
+        .stats-row { display: flex; justify-content: space-around; margin-top: 10px; }
+        .stat-item h3 { font-size: 20px; }
+        .stat-item.success { color: #00ff88; }
+        .stat-item.failed { color: #ff4d4d; }
+        .stat-item p { font-size: 12px; color: #ccc; }
+
+        /* Task Container Panels */
+        .panel {
+            background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; display: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn {
+            background: linear-gradient(to right, #00d2ff, #3a7bd5); color: white;
+            border: none; padding: 12px 25px; border-radius: 25px; font-size: 16px;
+            font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 15px;
+        }
+        .btn:hover { box-shadow: 0 0 15px rgba(0, 210, 255, 0.5); }
+        .btn:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
+
+        /* Timer Text */
+        .timer-text { font-size: 30px; font-weight: bold; color: #ff9900; margin: 10px 0; font-family: monospace; }
+        .loader { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #00d2ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Task Details List */
+        .details-list { text-align: left; margin-top: 15px; }
+        .detail-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .detail-item span { font-size: 14px; color: #ddd; }
+        .detail-item strong { color: white; font-size: 15px; }
+        .copy-btn { background: rgba(0, 210, 255, 0.2); color: #00d2ff; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .copy-btn:hover { background: #00d2ff; color: #0f2027; }
+
+        /* Submit Form */
+        .submit-area { margin-top: 20px; text-align: left; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
+        .submit-area input {
+            width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; outline: none;
+        }
+
+        /* Toast */
+        #toast { visibility: hidden; background-color: #00ff88; color: #0f2027; text-align: center; border-radius: 10px; padding: 10px; position: fixed; z-index: 100; bottom: 30px; left: 50%; transform: translateX(-50%); font-weight: bold; }
+        #toast.show { visibility: visible; animation: fadeinout 2.5s; }
+        @keyframes fadeinout { 0%, 100% { opacity: 0; } 10%, 90% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <i class="fas fa-arrow-left back-btn" onclick="location.href='home.html'"></i>
+    <h2>Daily Tasks</h2>
+</div>
+
+<!-- Notice -->
+<div class="notice-board">
+    <i class="fas fa-bell"></i> Notice: Par task 50 Tk! 2 gontay 5 task complete karle 250 tk + 150 tk Bonus. Account active karar janno 3 ta task complete kara lagbe.
+</div>
+
+<!-- User Stats Card -->
+<div class="status-card">
+    <div id="accStatusBadge" class="acc-status status-unactive">Unactive</div>
+    <div style="font-size: 12px; color: #ccc;" id="targetNotice">Target: 3 Tasks to Activate</div>
+    
+    <div class="stats-row">
+        <div class="stat-item success">
+            <h3 id="successCount">0</h3>
+            <p>Success</p>
+        </div>
+        <div class="stat-item failed">
+            <h3 id="failedCount">0</h3>
+            <p>Failed</p>
+        </div>
+    </div>
+</div>
+
+<!-- 1. Apply Panel -->
+<div class="panel" id="applyPanel" style="display: block;">
+    <h3><i class="fas fa-briefcase"></i> Ready for work?</h3>
+    <p style="font-size: 13px; color: #ccc; margin-top: 5px;">Apply now and wait for the admin to assign you a task.</p>
+    <button class="btn" id="applyBtn" onclick="applyTask()">Apply for Task</button>
+</div>
+
+<!-- 2. Cooldown Panel (3 Mins after Submit) -->
+<div class="panel" id="cooldownPanel">
+    <h3><i class="fas fa-hourglass-half"></i> Taking a Break!</h3>
+    <p style="font-size: 13px; color: #ccc; margin-top: 5px;">Please wait before applying for the next task.</p>
+    <div class="timer-text" id="cooldownTimer">03:00</div>
+</div>
+
+<!-- 3. Waiting for Admin Panel (2 Mins max) -->
+<div class="panel" id="waitingPanel">
+    <div class="loader"></div>
+    <h3>Waiting for Admin...</h3>
+    <p style="font-size: 13px; color: #ccc; margin-top: 5px;">Admin is reviewing your request. Auto cancel in:</p>
+    <div class="timer-text" id="waitTimer">02:00</div>
+</div>
+
+<!-- 4. Active Task Panel (16 Mins) -->
+<div class="panel" id="activePanel">
+    <h3 style="color: #00ff88;"><i class="fas fa-play-circle"></i> Task Assigned!</h3>
+    <div class="timer-text" id="taskTimer" style="color: #00ff88;">16:00</div>
+    <p style="font-size: 12px; color: #ddd;">Time is running! Complete the account creation using these details:</p>
+
+    <div class="details-list">
+        <div class="detail-item">
+            <div><span>First Name:</span> <br><strong id="t_fname">...</strong></div>
+            <button class="copy-btn" onclick="copyData('t_fname')"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="detail-item">
+            <div><span>Last Name:</span> <br><strong id="t_lname">...</strong></div>
+            <button class="copy-btn" onclick="copyData('t_lname')"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="detail-item">
+            <div><span>Birthday:</span> <br><strong id="t_dob">...</strong></div>
+            <button class="copy-btn" onclick="copyData('t_dob')"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="detail-item">
+            <div><span>Gmail:</span> <br><strong id="t_gmail">...</strong></div>
+            <button class="copy-btn" onclick="copyData('t_gmail')"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="detail-item">
+            <div><span>Password:</span> <br><strong id="t_pass">...</strong></div>
+            <button class="copy-btn" onclick="copyData('t_pass')"><i class="fas fa-copy"></i></button>
+        </div>
+    </div>
+
+    <div class="submit-area">
+        <h4 style="margin-bottom: 10px; font-size: 15px;">Submit Work Details</h4>
+        <input type="text" id="subGmail" placeholder="Enter Created Gmail" required>
+        <input type="text" id="subPass" placeholder="Enter Gmail Password" required>
+        <button class="btn" style="background: #00ff88; color: #0f2027;" onclick="submitTask()">Submit Work</button>
+    </div>
+</div>
+
+<!-- 5. Under Review Panel -->
+<div class="panel" id="reviewPanel">
+    <i class="fas fa-clipboard-check" style="font-size: 40px; color: #00d2ff; margin-bottom: 10px;"></i>
+    <h3>Task Submitted!</h3>
+    <p style="font-size: 13px; color: #ccc; margin-top: 5px;">Your work is under review by the Admin. Please wait for the result.</p>
+</div>
+
+<div id="toast">Copied to Clipboard!</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const loggedInUser = sessionStorage.getItem("loggedInUser");
+    if(!loggedInUser) window.location.href = "index.html";
+
+    let userName = "";
+    let mainLoopInterval;
+
+    // Load User Profile Data
+    db.ref("users/" + loggedInUser).on("value", snapshot => {
+        if(snapshot.exists()) {
+            let u = snapshot.val();
+            userName = u.name;
+            document.getElementById("successCount").innerText = u.completed_tasks || 0;
+            document.getElementById("failedCount").innerText = u.failed_tasks || 0;
+            
+            let statusBadge = document.getElementById("accStatusBadge");
+            let targetNotice = document.getElementById("targetNotice");
+
+            if(u.status === "active") {
+                statusBadge.className = "acc-status status-active";
+                statusBadge.innerText = "ACTIVE";
+                targetNotice.innerText = "Account is verified!";
+                targetNotice.style.color = "#00ff88";
+            } else {
+                statusBadge.className = "acc-status status-unactive";
+                statusBadge.innerText = "UNACTIVE";
+                targetNotice.innerText = `Target: ${3 - (u.completed_tasks || 0)} Tasks to Activate`;
+            }
+        }
+    });
+
+    // Listen to Task Requests Node
+    db.ref("task_requests/" + loggedInUser).on("value", snapshot => {
+        clearInterval(mainLoopInterval);
+        
+        if(!snapshot.exists()) {
+            checkCooldownAndShowApply();
+        } else {
+            let taskData = snapshot.val();
+            mainLoopInterval = setInterval(() => processTaskState(taskData), 1000);
+            processTaskState(taskData); // Run immediately
+        }
+    });
+
+    function showPanel(panelId) {
+        document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+        document.getElementById(panelId).style.display = 'block';
+    }
+
+    // Main Engine to check times and states
+    function processTaskState(task) {
+        let now = Date.now();
+
+        if (task.status === "pending") {
+            let timePassed = now - task.request_time;
+            let timeLeft = 120000 - timePassed; // 2 Mins wait
+
+            if(timeLeft <= 0) {
+                // Timeout logic: Delete request and let user apply again
+                db.ref("task_requests/" + loggedInUser).remove();
+            } else {
+                document.getElementById("waitTimer").innerText = formatTime(timeLeft);
+                showPanel("waitingPanel");
+            }
+        } 
+        else if (task.status === "assigned") {
+            let timePassed = now - task.assigned_time;
+            let timeLeft = 960000 - timePassed; // 16 Mins max
+
+            if(timeLeft <= 0) {
+                // Task failed due to time
+                alert("Time is over! Task failed.");
+                db.ref("users/" + loggedInUser).child("failed_tasks").transaction(v => (v || 0) + 1);
+                db.ref("task_requests/" + loggedInUser).remove();
+            } else {
+                // Set data to UI
+                document.getElementById("t_fname").innerText = task.details.fname;
+                document.getElementById("t_lname").innerText = task.details.lname;
+                document.getElementById("t_dob").innerText = task.details.dob;
+                document.getElementById("t_gmail").innerText = task.details.gmail;
+                document.getElementById("t_pass").innerText = task.details.password;
+
+                document.getElementById("taskTimer").innerText = formatTime(timeLeft);
+                showPanel("activePanel");
+            }
+        }
+        else if (task.status === "submitted") {
+            showPanel("reviewPanel");
+        }
+    }
+
+    // Cooldown Engine (3 Mins wait after submission/completion)
+    function checkCooldownAndShowApply() {
+        db.ref("users/" + loggedInUser + "/last_task_time").once("value", snap => {
+            let lastTime = snap.val();
+            if(lastTime) {
+                mainLoopInterval = setInterval(() => {
+                    let now = Date.now();
+                    let timeLeft = (lastTime + 180000) - now; // 3 mins wait
+
+                    if(timeLeft <= 0) {
+                        clearInterval(mainLoopInterval);
+                        showPanel("applyPanel");
+                    } else {
+                        document.getElementById("cooldownTimer").innerText = formatTime(timeLeft);
+                        showPanel("cooldownPanel");
+                    }
+                }, 1000);
+            } else {
+                showPanel("applyPanel");
+            }
+        });
+    }
+
+    // Apply Button Click
+    function applyTask() {
+        db.ref("task_requests/" + loggedInUser).set({
+            name: userName,
+            number: loggedInUser,
+            status: "pending",
+            request_time: Date.now()
+        });
+    }
+
+    // Submit Work
+    function submitTask() {
+        let g = document.getElementById("subGmail").value;
+        let p = document.getElementById("subPass").value;
+
+        if(!g || !p) return alert("Please enter the created Gmail and Password!");
+
+        db.ref("task_requests/" + loggedInUser).update({
+            status: "submitted",
+            submit_time: Date.now(),
+            submitted_details: { gmail: g, password: p }
+        }).then(() => {
+            // Set cooldown time in user profile
+            db.ref("users/" + loggedInUser).update({ last_task_time: Date.now() });
+        });
+    }
+
+    // Copy Tool
+    function copyData(id) {
+        let text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text);
+        let toast = document.getElementById("toast");
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2000);
+    }
+
+    // Format MS to MM:SS
+    function formatTime(ms) {
+        let totalSeconds = Math.floor(ms / 1000);
+        let m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        let s = (totalSeconds % 60).toString().padStart(2, '0');
+        return m + ":" + s;
+    }
+</script>
+</body>
+</html>
