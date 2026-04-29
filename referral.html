@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral - Earning Platform</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; color: white;
+            padding: 20px;
+        }
+        .container {
+            width: 100%; max-width: 400px;
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+            padding: 30px 20px; border-radius: 20px; text-align: center;
+            animation: zoomIn 0.5s ease-out; position: relative;
+        }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        
+        .back-btn {
+            position: absolute; top: 20px; left: 20px; color: white; font-size: 20px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .back-btn:hover { color: #00d2ff; }
+
+        .icon-header { font-size: 50px; color: #00d2ff; margin-bottom: 10px; margin-top: 10px; }
+        h2 { font-size: 22px; margin-bottom: 5px; }
+        p.subtitle { font-size: 13px; color: #ccc; margin-bottom: 25px; }
+
+        /* Active Ref Box */
+        .stat-box {
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.2), rgba(58, 123, 213, 0.2));
+            border: 1px solid rgba(0, 210, 255, 0.3); padding: 20px; border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-box h1 { font-size: 35px; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+        .stat-box p { font-size: 14px; font-weight: bold; margin-top: 5px; }
+        .stat-box small { font-size: 11px; color: #ddd; display: block; margin-top: 5px; }
+
+        /* Copy Boxes */
+        .copy-group { margin-bottom: 20px; text-align: left; }
+        .copy-group label { font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block; padding-left: 5px; }
+        .input-with-btn { display: flex; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        .input-with-btn input {
+            flex: 1; background: transparent; border: none; padding: 12px 15px;
+            color: white; outline: none; font-size: 14px;
+        }
+        .input-with-btn button {
+            background: #00d2ff; color: #0f2027; border: none; padding: 0 20px;
+            font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px;
+        }
+        .input-with-btn button:hover { background: #00ff88; }
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: #00ff88; color: #0f2027;
+            text-align: center; border-radius: 30px; padding: 12px; position: fixed;
+            z-index: 1; bottom: 30px; left: 50%; transform: translateX(-50%); font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,255,136,0.4); transition: visibility 0s, opacity 0.5s linear; opacity: 0;
+        }
+        #toast.show { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <i class="fas fa-arrow-left back-btn" onclick="location.href='home.html'"></i>
+    
+    <i class="fas fa-users icon-header"></i>
+    <h2>Invite Friends</h2>
+    <p class="subtitle">Share your code and earn bonuses when they become active!</p>
+
+    <!-- Active Referrals Count -->
+    <div class="stat-box">
+        <h1 id="activeCount">0</h1>
+        <p>Active Referrals</p>
+        <small>(Only users who completed 3 tasks are counted)</small>
+    </div>
+
+    <!-- Referral Code -->
+    <div class="copy-group">
+        <label>Your Referral Code</label>
+        <div class="input-with-btn">
+            <input type="text" id="refCode" readonly value="Loading...">
+            <button onclick="copyToClipboard('refCode')"><i class="fas fa-copy"></i> Copy</button>
+        </div>
+    </div>
+
+    <!-- Referral Link -->
+    <div class="copy-group">
+        <label>Your Referral Link</label>
+        <div class="input-with-btn">
+            <input type="text" id="refLink" readonly value="Loading...">
+            <button onclick="copyToClipboard('refLink')"><i class="fas fa-copy"></i> Copy</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"><i class="fas fa-check-circle"></i> Copied to Clipboard!</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Check Login Session
+    const loggedInUser = sessionStorage.getItem("loggedInUser");
+    if(!loggedInUser) {
+        window.location.href = "index.html";
+    }
+
+    let myReferralCode = "";
+
+    // Fetch User Data to get Referral Code
+    db.ref("users/" + loggedInUser).once("value", snapshot => {
+        if(snapshot.exists()) {
+            let user = snapshot.val();
+            myReferralCode = user.my_referral_code;
+
+            // Set Data in UI
+            document.getElementById("refCode").value = myReferralCode;
+            document.getElementById("refLink").value = "https://art-artificial-earning-platform.github.io/start/?ref=" + myReferralCode;
+
+            // Calculate Only Active Referrals
+            calculateActiveReferrals();
+        }
+    });
+
+    // Function to search database for active referrals
+    function calculateActiveReferrals() {
+        db.ref("users").once("value", snapshot => {
+            let activeCount = 0;
+            
+            // Loop through all users
+            snapshot.forEach(childSnapshot => {
+                let otherUser = childSnapshot.val();
+                
+                // If they used my code AND their status is active
+                if(otherUser.referred_by === myReferralCode && otherUser.status === "active") {
+                    activeCount++;
+                }
+            });
+
+            // Update UI
+            document.getElementById("activeCount").innerText = activeCount;
+
+            // Auto-update this count in my own profile database
+            db.ref("users/" + loggedInUser).update({
+                active_referral_count: activeCount
+            });
+        });
+    }
+
+    // Copy to Clipboard Logic
+    function copyToClipboard(elementId) {
+        let copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+        navigator.clipboard.writeText(copyText.value);
+
+        // Show Toast Notification
+        let toast = document.getElementById("toast");
+        toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2500);
+    }
+</script>
+</body>
+</html>
