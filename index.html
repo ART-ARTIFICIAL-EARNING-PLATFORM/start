@@ -1,1 +1,125 @@
-tyw5au4j6434hyhgyyyhr
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Earning Platform</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(135deg, #141e30, #243b55); height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            padding: 40px 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 350px; color: white; border: 1px solid rgba(255,255,255,0.1);
+            animation: slideIn 0.8s ease-out;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        h2 { text-align: center; margin-bottom: 25px; font-size: 28px; color: #00d2ff; }
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group i.fa-phone, .input-group i.fa-lock { position: absolute; top: 12px; left: 15px; color: #00d2ff; }
+        .input-group input {
+            width: 100%; padding: 12px 10px 12px 45px; border: none; border-radius: 30px;
+            background: rgba(255,255,255,0.1); color: white; outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { background: rgba(255,255,255,0.2); border: 1px solid #00d2ff; }
+        .toggle-password { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #aaa; }
+        .rem-forget { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 20px; color: #ccc; }
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 30px;
+            background: linear-gradient(to right, #00d2ff, #3a7bd5);
+            color: white; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s;
+        }
+        .btn:hover { box-shadow: 0 0 20px rgba(0, 210, 255, 0.6); transform: translateY(-2px); }
+        .link { text-align: center; margin-top: 20px; font-size: 14px; }
+        .link a { color: #00d2ff; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Welcome Back</h2>
+    <div class="input-group">
+        <i class="fas fa-phone"></i>
+        <input type="text" id="loginNumber" placeholder="Full Number (e.g. +8801...)" required>
+    </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <i class="fas fa-eye toggle-password" onclick="togglePass()"></i>
+    </div>
+    <div class="rem-forget">
+        <label><input type="checkbox" id="rememberMe"> Remember Me</label>
+    </div>
+    <button class="btn" onclick="loginUser()">Login</button>
+    <div class="link">Don't have an account? <a href="registration.html">Sign Up</a></div>
+</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Check Remember Me
+    window.onload = () => {
+        if(localStorage.getItem("rememberedNumber")) {
+            document.getElementById("loginNumber").value = localStorage.getItem("rememberedNumber");
+            document.getElementById("rememberMe").checked = true;
+        }
+    }
+
+    function togglePass() {
+        let passField = document.getElementById("loginPassword");
+        let icon = document.querySelector(".toggle-password");
+        if(passField.type === "password") {
+            passField.type = "text";
+            icon.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            passField.type = "password";
+            icon.classList.replace("fa-eye-slash", "fa-eye");
+        }
+    }
+
+    function loginUser() {
+        let number = document.getElementById('loginNumber').value;
+        let password = document.getElementById('loginPassword').value;
+        let remember = document.getElementById('rememberMe').checked;
+
+        if(!number || !password) return alert("Please enter number and password!");
+
+        db.ref("users/" + number).once("value", snapshot => {
+            if (snapshot.exists()) {
+                let userData = snapshot.val();
+                if(userData.password === password) {
+                    if(remember) {
+                        localStorage.setItem("rememberedNumber", number);
+                    } else {
+                        localStorage.removeItem("rememberedNumber");
+                    }
+                    // Save logged-in user session
+                    sessionStorage.setItem("loggedInUser", number);
+                    alert("Login Successful!");
+                    window.location.href = "home.html"; // Redirect to Home
+                } else {
+                    alert("Incorrect Password!");
+                }
+            } else {
+                alert("Account not found!");
+            }
+        });
+    }
+</script>
+</body>
+</html>
