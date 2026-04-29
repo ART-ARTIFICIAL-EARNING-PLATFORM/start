@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration - Earning Platform</title>
+    <!-- Firebase SDK (Compat version for single file ease) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(45deg, #0f2027, #203a43, #2c5364);
+            height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            padding: 30px; border-radius: 20px; box-shadow: 0 15px 25px rgba(0,0,0,0.5);
+            width: 350px; color: white; border: 1px solid rgba(255,255,255,0.2);
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        h2 { text-align: center; margin-bottom: 20px; letter-spacing: 1px; }
+        .input-group { margin-bottom: 15px; position: relative; }
+        .input-group i { position: absolute; top: 12px; left: 15px; color: #aaa; }
+        .input-group input, select {
+            width: 100%; padding: 10px 10px 10px 40px; border: none; border-radius: 25px;
+            background: rgba(255,255,255,0.2); color: white; outline: none; transition: 0.3s;
+        }
+        .input-group input::placeholder { color: #ddd; }
+        .input-group input:focus { background: rgba(255,255,255,0.3); box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .phone-group { display: flex; gap: 10px; }
+        .phone-group select { width: 35%; padding-left: 10px; }
+        .phone-group input { width: 65%; }
+        .btn {
+            width: 100%; padding: 10px; border: none; border-radius: 25px;
+            background: #00d2ff; background: linear-gradient(to right, #3a7bd5, #3a6073);
+            color: white; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px;
+        }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(58,123,213,0.5); }
+        .link { text-align: center; margin-top: 15px; font-size: 13px; }
+        .link a { color: #00d2ff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Register</h2>
+    <div class="input-group">
+        <i class="fas fa-user"></i>
+        <input type="text" id="name" placeholder="Full Name" required>
+    </div>
+    <div class="phone-group input-group">
+        <select id="country">
+            <option value="+880">🇧🇩 +880</option>
+            <option value="+91">🇮🇳 +91</option>
+        </select>
+        <input type="number" id="number" placeholder="Phone Number" required>
+    </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="password" placeholder="Password" required>
+    </div>
+    <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="cpassword" placeholder="Confirm Password" required>
+    </div>
+    <div class="input-group">
+        <i class="fas fa-user-friends"></i>
+        <input type="text" id="refcode" placeholder="Referral Code (Optional)">
+    </div>
+    <button class="btn" onclick="registerUser()">Sign Up</button>
+    <div class="link">Already have an account? <a href="index.html">Login Here</a></div>
+</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function registerUser() {
+        let name = document.getElementById('name').value;
+        let country = document.getElementById('country').value;
+        let number = document.getElementById('number').value;
+        let password = document.getElementById('password').value;
+        let cpassword = document.getElementById('cpassword').value;
+        let refcode = document.getElementById('refcode').value;
+
+        if(!name || !number || !password) return alert("Please fill all required fields!");
+        if(password !== cpassword) return alert("Passwords do not match!");
+
+        let fullNumber = country + number;
+        let myRefCode = "REF" + Math.floor(100000 + Math.random() * 900000); // Generate unique ref code
+
+        // Check if number already exists
+        db.ref("users/" + fullNumber).once("value", snapshot => {
+            if (snapshot.exists()) {
+                alert("This number is already registered!");
+            } else {
+                // Register User Data
+                let userData = {
+                    name: name,
+                    number: fullNumber,
+                    password: password, // As requested for admin panel
+                    my_referral_code: myRefCode,
+                    referred_by: refcode || "none",
+                    status: "unactive",
+                    balance: 0,
+                    active_referral_count: 0,
+                    completed_tasks: 0,
+                    failed_tasks: 0,
+                    salary_level: 0,
+                    join_date: new Date().toLocaleString()
+                };
+
+                db.ref("users/" + fullNumber).set(userData).then(() => {
+                    alert("Registration Successful!");
+                    window.location.href = "index.html";
+                }).catch(error => {
+                    alert("Error: " + error.message);
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>
