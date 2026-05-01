@@ -22,21 +22,25 @@
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         
+        /* Header Section */
         .header { text-align: center; margin-top: 10px; }
         .header h2 { font-size: 24px; color: #00d2ff; }
         .status-badge { display: inline-block; margin-top: 5px; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .status-active { background: rgba(0, 255, 100, 0.2); color: #00ff88; border: 1px solid #00ff88; }
         .status-unactive { background: rgba(255, 0, 50, 0.2); color: #ff4d4d; border: 1px solid #ff4d4d; }
         
-        .notice-box { background: rgba(255, 165, 0, 0.2); border-left: 4px solid orange; padding: 12px; border-radius: 8px; font-size: 13px; color: #ffd700; display: flex; align-items: center; gap: 10px; line-height: 1.4; }
+        /* Notice Section */
+        .notice-box { background: rgba(255, 165, 0, 0.2); border-left: 4px solid orange; padding: 12px; border-radius: 8px; font-size: 13px; color: #ffd700; display: flex; align-items: center; gap: 10px; line-height: 1.4; transition: 0.3s; }
         .notice-box i { font-size: 20px; }
 
+        /* Stats Section */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .stat-card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
         .stat-card i { font-size: 25px; color: #00d2ff; margin-bottom: 10px; }
         .stat-card h3 { font-size: 22px; margin-bottom: 5px; transition: 0.5s; }
         .stat-card p { font-size: 12px; color: #ccc; }
 
+        /* Action Buttons */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
         .action-btn {
             background: linear-gradient(to right, #3a7bd5, #3a6073); border: none; padding: 15px;
@@ -95,7 +99,7 @@
         <div id="accStatus" class="status-badge status-unactive">Unactive</div>
     </div>
 
-    <!-- Notice -->
+    <!-- Notice Box -->
     <div class="notice-box" id="noticeBox">
         <i class="fas fa-bullhorn"></i>
         <span id="noticeText">Loading notice...</span>
@@ -145,6 +149,7 @@
 </div>
 
 <script>
+    // Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
         authDomain: "fir-f4489.firebaseapp.com",
@@ -162,13 +167,13 @@
     let currentBalance = 0;
     let pendingBonusAmount = 0;
 
-    // Fetch User Data
+    // Fetch User Data from Firebase
     db.ref("users/" + loggedInUser).on("value", snapshot => {
         if(snapshot.exists()) {
             let user = snapshot.val();
             currentBalance = user.balance || 0;
             
-            // Auto Account Activation
+            // Auto Account Activation check
             if (user.completed_tasks >= 3 && user.status !== "active") {
                 db.ref("users/" + loggedInUser).update({ status: "active" });
                 user.status = "active"; 
@@ -180,13 +185,15 @@
             document.getElementById("activeRefs").innerText = user.active_referral_count || 0;
             document.getElementById("salaryLevel").innerText = user.salary_level || "0";
 
-            let statusBadge = document.getElementById("accStatusBadge");
+            let statusBadge = document.getElementById("accStatus");
             let noticeText = document.getElementById("noticeText");
             let noticeBox = document.getElementById("noticeBox");
 
+            // Handle Active/Unactive Notice dynamically
             if(user.status === "active") {
                 statusBadge.innerText = "ACTIVE";
                 statusBadge.className = "status-badge status-active";
+                
                 noticeBox.style.background = "rgba(0, 255, 100, 0.2)";
                 noticeBox.style.borderLeft = "4px solid #00ff88";
                 noticeBox.style.color = "#00ff88";
@@ -194,8 +201,13 @@
             } else {
                 statusBadge.innerText = "UNACTIVE";
                 statusBadge.className = "status-badge status-unactive";
+                
+                noticeBox.style.background = "rgba(255, 165, 0, 0.2)";
+                noticeBox.style.borderLeft = "4px solid orange";
+                noticeBox.style.color = "#ffd700";
+                
                 let tasksNeeded = 3 - (user.completed_tasks || 0);
-                noticeText.innerHTML = `Complete <b>${tasksNeeded} more tasks</b> to activate your account! Account activation is required for Withdraw & Salary.`;
+                noticeText.innerHTML = `Complete <b>${tasksNeeded} more tasks</b> to activate your account!`;
             }
 
             // ===================================
@@ -206,10 +218,10 @@
                 document.getElementById("bonusMessage").innerText = user.pending_bonus.message;
                 document.getElementById("bonusAmountText").innerText = "+" + pendingBonusAmount + " ৳";
                 
-                // Show Popup
+                // Show Popup smoothly
                 document.getElementById("bonusOverlay").style.display = "flex";
             } else {
-                // Hide popup if no bonus
+                // Hide popup if no bonus exists
                 document.getElementById("bonusOverlay").style.display = "none";
             }
         }
@@ -222,12 +234,11 @@
         if (pendingBonusAmount > 0) {
             let newBalance = currentBalance + pendingBonusAmount;
 
-            // Update Firebase: Add balance and remove pending_bonus node
+            // Add balance and remove pending_bonus node from Database
             db.ref("users/" + loggedInUser).update({
                 balance: newBalance,
-                pending_bonus: null // Removes the bonus from DB
+                pending_bonus: null
             }).then(() => {
-                // UI automatically updates because of the .on() listener above!
                 alert("Awesome! Bonus claimed successfully.");
             });
         }
