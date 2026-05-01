@@ -188,6 +188,7 @@
 
     let userName = "";
     let mainLoopInterval;
+    let currentTaskAssignedTime = 0; 
 
     db.ref("users/" + loggedInUser).on("value", snapshot => {
         if(snapshot.exists()) {
@@ -243,12 +244,12 @@
             }
         } 
         else if (task.status === "assigned") {
+            currentTaskAssignedTime = task.assigned_time;
             let timePassed = now - task.assigned_time;
-            let timeLeft = 960000 - timePassed; 
+            let timeLeft = 960000 - timePassed; // 16 Mins max
 
             if(timeLeft <= 0) {
-                alert("Time is over! Task failed.");
-                db.ref("users/" + loggedInUser).child("failed_tasks").transaction(v => (v || 0) + 1);
+                // Auto Cancel Logic (কোনো পেনাল্টি ছাড়া শুধু ডিলিট)
                 db.ref("task_requests/" + loggedInUser).remove();
             } else {
                 document.getElementById("t_fname").innerText = task.details.fname;
@@ -297,11 +298,24 @@
         });
     }
 
+    // ==========================================
+    // SUBMIT BUTTON - AUTO CANCEL CHECK
+    // ==========================================
     function submitTask() {
         let g = document.getElementById("subGmail").value;
         let p = document.getElementById("subPass").value;
 
         if(!g || !p) return alert("Please enter the created Gmail and Password!");
+
+        let now = Date.now();
+        let timePassedSinceAssigned = now - currentTaskAssignedTime;
+
+        // যদি ১৬ মিনিট (৯৬০,০০০ মিলি-সেকেন্ড) পার হয়ে যায়
+        if (timePassedSinceAssigned > 960000) {
+            alert("Time is over! Task auto-canceled. Please apply for a new task.");
+            db.ref("task_requests/" + loggedInUser).remove(); // শুধু রিমুভ, কোনো ফেইল্ড কাউন্ট বাড়বে না
+            return; 
+        }
 
         db.ref("task_requests/" + loggedInUser).update({
             status: "submitted",
